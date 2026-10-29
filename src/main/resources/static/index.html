@@ -1,0 +1,546 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZeroTrace AI | Security Scanner</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #080d19;
+  --panel: #111a2b;
+  --line: #25334a;
+  --text: #edf3ff;
+  --muted: #9baac1;
+  --blue: #70a5ff;
+  --red: #ff7979;
+  --green: #69ddb0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 system-ui, Segoe UI, sans-serif;
+}
+header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px max(5%, calc((100% - 1100px)/2));
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+.brand span { color: var(--blue); }
+.pill {
+  border: 1px solid var(--line); padding: 5px 10px;
+  border-radius: 20px; color: var(--muted); font-size: 12px;
+}
+main { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
+.eyebrow { color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: 2px; }
+h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.1; margin: 10px 0; }
+.sub { color: var(--muted); max-width: 650px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 28px; }
+.card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 16px; padding: 22px; min-width: 0;
+}
+h2 { font-size: 17px; margin: 0 0 15px; }
+.upload {
+  display: block; border: 1px dashed #526b8d; border-radius: 12px;
+  padding: 25px 15px; text-align: center; cursor: pointer;
+  background: #0c1423;
+}
+.upload input { display: block; width: 100%; margin-top: 14px; }
+button {
+  background: var(--blue); color: #071020; border: 0; border-radius: 9px;
+  padding: 12px 18px; font-weight: 800; cursor: pointer; width: 100%; margin-top: 15px;
+}
+button:disabled { opacity: .55; cursor: wait; }
+.muted { color: var(--muted); font-size: 13px; }
+#message { margin-top: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.error { color: var(--red); }
+.success { color: var(--green); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { background: #0b1321; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.stat strong { display: block; font-size: 25px; overflow-wrap: anywhere; }
+.stat span { color: var(--muted); font-size: 12px; }
+.pipeline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 20px; }
+.step { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 12px 9px; vertical-align: top; overflow-wrap: anywhere; }
+th { color: var(--muted); font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+#results { margin-top: 18px; }
+.status { color: var(--blue); }
+footer { color: var(--muted); font-size: 12px; text-align: center; padding: 25px; }
+@media(max-width:700px) {
+  .grid { grid-template-columns: 1fr; }
+  main { margin-top: 28px; }
+  header { padding: 16px 20px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">ZeroTrace <span>AI</span></div>
+  <div class="pill" id="apiStatus">Checking API…</div>
+</header>
+
+<main>
+  <div class="eyebrow">APPLICATION SECURITY ANALYSIS</div>
+  <h1>Find risky code.<br>Understand the evidence.</h1>
+  <p class="sub">
+    Upload a ZIP containing Java source code. ZeroTrace AI runs static
+    analysis and displays potential security findings for review.
+  </p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>01 / Submit a project</h2>
+      <form id="scanForm">
+        <label class="upload">
+          <strong>Select your Java project ZIP</strong>
+          <div class="muted">Choose a ZIP file from your computer</div>
+          <input id="projectFile" type="file" accept=".zip,application/zip" required>
+        </label>
+        <button id="scanButton" type="submit">Run security scan</button>
+      </form>
+      <div id="message" class="muted" role="status">Waiting for a project.</div>
+      <div class="pipeline">
+        <span class="step">ZIP validation</span><span>→</span>
+        <span class="step">Semgrep analysis</span><span>→</span>
+        <span class="step">Findings review</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>02 / Scan summary</h2>
+      <div class="stats">
+        <div class="stat"><strong id="scanStatus">—</strong><span>Scan status</span></div>
+        <div class="stat"><strong id="fileCount">—</strong><span>Files analyzed</span></div>
+        <div class="stat"><strong id="findingCount">—</strong><span>Findings</span></div>
+      </div>
+      <p class="muted" id="scanId" style="margin-top:18px;overflow-wrap:anywhere">Scan ID: —</p>
+      <p class="muted" id="engine">Analysis engine: —</p>
+      <p class="muted">A finding is a signal for investigation, not proof of an exploitable vulnerability.</p>
+    </section>
+  </div>
+
+  <section class="card" id="results">
+    <h2>03 / Findings</h2>
+    <p class="muted" id="resultHint">Results will appear here after a scan.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Rule</th><th>Status</th><th>Severity</th><th>Location</th><th>Details</th>
+        </tr></thead>
+        <tbody id="findingRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+<section class="card" id="remediationPanel" style="margin-top:18px">
+  <h2>04 / ZeroRemediate</h2>
+  <p class="muted">
+    Demonstrate a predefined SQL-injection remediation proposal and verify
+    the trusted synthetic fixtures. This demo does not patch uploaded files.
+  </p>
+  <button id="remediateButton" type="button" onclick="runRemediationDemo()">
+    Generate remediation demo
+  </button>
+  <p id="remediationMessage" class="muted" role="status">
+    Ready to demonstrate Phase 3.
+  </p>
+  <div id="proposalDetails" style="display:none">
+    <h3>Root cause</h3>
+    <p id="proposalRootCause"></p>
+    <h3>Recommended remediation</h3>
+    <p id="proposalRemediation"></p>
+    <h3>Proposed code</h3>
+    <pre id="proposalCode" style="white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1321;padding:14px;border-radius:10px"></pre>
+    <h3>Unified diff</h3>
+    <pre id="proposalDiff" style="white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1321;padding:14px;border-radius:10px"></pre>
+    <button id="verifyButton" type="button" onclick="verifyRemediationDemo()">
+      Verify synthetic fixtures
+    </button>
+    <pre id="verificationResult" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+  </div>
+</section>
+</main>
+
+<section class="card" id="zeroWatchPanel" style="margin-top:20px">
+  <h2>03 / ZeroWatch — Runtime monitoring</h2>
+  <p class="muted">
+    Generate three synthetic access-denied events and inspect rule-based alerts.
+    This demo does not monitor a real application.
+  </p>
+
+  <div class="grid">
+    <button id="zeroWatchDemoButton" type="button"
+      onclick="runZeroWatchDemo()">
+      Generate synthetic event burst
+    </button>
+    <button id="zeroWatchRefreshButton" type="button"
+      onclick="refreshZeroWatchAlerts()">
+      Refresh alerts
+    </button>
+  </div>
+
+  <p id="zeroWatchMessage" class="muted" role="status">
+    Waiting for ZeroWatch.
+  </p>
+
+  <h3>Recent alerts</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Severity</th>
+          <th>Rule</th>
+          <th>Explanation</th>
+          <th>Evidence events</th>
+        </tr>
+      </thead>
+      <tbody id="zeroWatchAlertRows">
+        <tr><td colspan="4">No alerts loaded yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Latest event responses</h3>
+  <pre id="zeroWatchEventOutput"
+    style="white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1321;padding:14px;border-radius:10px">No events submitted.</pre>
+</section>
+
+
+<footer>ZeroTrace AI · Static analysis prototype · Findings require human verification</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const safe = value => value == null || value === "" ? "—" : String(value);
+
+function cell(text) {
+  const td = document.createElement("td");
+  td.textContent = safe(text);
+  return td;
+}
+
+function showFindings(findings) {
+  const body = $("findingRows");
+  body.replaceChildren();
+
+  if (!Array.isArray(findings) || findings.length === 0) {
+    $("resultHint").textContent = "No findings were returned for this scan.";
+    return;
+  }
+
+  $("resultHint").textContent = "Review each result and confirm it against the source code.";
+
+  findings.forEach(f => {
+    const tr = document.createElement("tr");
+    const location = safe(f.file) + (f.startLine ? ":" + f.startLine : "");
+    const details = f.message || f.recommendation || f.remediation || f.description;
+    tr.append(
+      cell(f.ruleId || f.id),
+      cell(f.status),
+      cell(f.severity),
+      cell(location),
+      cell(details)
+    );
+    body.appendChild(tr);
+  });
+}
+
+function resetSummary() {
+  $("scanStatus").textContent = "—";
+  $("fileCount").textContent = "—";
+  $("findingCount").textContent = "—";
+  $("scanId").textContent = "Scan ID: —";
+  $("engine").textContent = "Analysis engine: —";
+  $("findingRows").replaceChildren();
+}
+
+async function checkApi() {
+  try {
+    const response = await fetch("/api/v1/health");
+    if (!response.ok) throw new Error("Health check failed");
+    const data = await response.json();
+    $("apiStatus").textContent = "API online · " + (data.status || "OK");
+    $("apiStatus").style.color = "var(--green)";
+  } catch {
+    $("apiStatus").textContent = "API unavailable";
+    $("apiStatus").style.color = "var(--red)";
+  }
+}
+
+$("scanForm").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const file = $("projectFile").files[0];
+  if (!file) return;
+
+  if (!file.name.toLowerCase().endsWith(".zip")) {
+    $("message").textContent = "Please select a .zip file.";
+    $("message").className = "error";
+    return;
+  }
+
+  const button = $("scanButton");
+  button.disabled = true;
+  button.textContent = "Scanning…";
+  $("message").textContent = "Uploading project and running static analysis. Please wait.";
+  $("message").className = "muted";
+  resetSummary();
+
+  try {
+    const form = new FormData();
+    form.append("file", file);
+
+    const response = await fetch("/api/v1/scans", {
+      method: "POST",
+      body: form
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || "Scan request failed with HTTP " + response.status);
+    }
+
+    $("scanStatus").textContent = safe(data.status);
+    $("fileCount").textContent = safe(data.filesAnalyzed);
+    $("findingCount").textContent = safe(data.findingsCount);
+    $("scanId").textContent = "Scan ID: " + safe(data.scanId);
+    $("engine").textContent = "Analysis engine: " + safe(data.engine);
+
+    let findings = data.findings;
+    if (!Array.isArray(findings) && data.scanId) {
+      const result = await fetch("/api/v1/scans/" + encodeURIComponent(data.scanId) + "/findings");
+      if (result.ok) findings = await result.json();
+    }
+
+    showFindings(findings);
+    $("message").textContent = "Scan completed. Review the findings below.";
+    $("message").className = "success";
+  } catch (error) {
+    $("message").textContent = "Scan failed: " + error.message;
+    $("message").className = "error";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Run security scan";
+  }
+});
+
+checkApi();
+
+let remediationProposalId = null;
+
+async function phase3Request(path, options = {}) {
+  const response = await fetch("http://127.0.0.1:8083/api/v1" + path, {
+    ...options,
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error || "Phase 3 HTTP " + response.status);
+  }
+
+  return data;
+}
+
+async function runRemediationDemo() {
+  const button = $("remediateButton");
+  button.disabled = true;
+  $("remediationMessage").textContent = "Submitting the synthetic finding…";
+  $("remediationMessage").className = "muted";
+  $("proposalDetails").style.display = "none";
+  $("verificationResult").textContent = "";
+  remediationProposalId = null;
+
+  try {
+    const finding = await phase3Request("/findings", {
+      method: "POST",
+      body: JSON.stringify({
+        findingId: "ui-demo-sqli-" + Date.now(),
+        ruleId: "zerotrace.java.sql-injection",
+        category: "sql-injection",
+        severity: "HIGH",
+        filePath: "UnsafeUserLookup.java",
+        lineStart: 8,
+        lineEnd: 8,
+        evidence: ["Synthetic example: user-controlled input is concatenated into SQL."],
+        explanation: "Demonstration finding for the predefined SQL-injection remediation fixture.",
+        codeContext:
+          "String sql = \"SELECT * FROM users WHERE name = '\" + userInput + \"'\";\n" +
+          "statement.executeQuery(sql);"
+      })
+    });
+
+    const proposal = await phase3Request(
+      "/findings/" + encodeURIComponent(finding.findingId) + "/proposals",
+      { method: "POST" }
+    );
+
+    remediationProposalId = proposal.proposalId;
+    $("proposalRootCause").textContent = proposal.rootCause || "—";
+    $("proposalRemediation").textContent = proposal.remediation || "—";
+    $("proposalCode").textContent = proposal.proposedSnippet || "—";
+    $("proposalDiff").textContent = proposal.unifiedDiff || "—";
+    $("proposalDetails").style.display = "block";
+
+    $("remediationMessage").textContent =
+      "Proposal generated. Provider mode: " + (proposal.providerMode || "unknown") +
+      ". This is a predefined fixture proposal, not a patch to the uploaded project.";
+    $("remediationMessage").className = "success";
+  } catch (error) {
+    $("remediationMessage").textContent = "Remediation failed: " + error.message;
+    $("remediationMessage").className = "error";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function verifyRemediationDemo() {
+  if (!remediationProposalId) return;
+
+  const button = $("verifyButton");
+  button.disabled = true;
+  $("verificationResult").textContent = "Running trusted synthetic fixture checks…";
+
+  try {
+    const report = await phase3Request(
+      "/proposals/" + encodeURIComponent(remediationProposalId) + "/verify",
+      { method: "POST" }
+    );
+
+    $("verificationResult").textContent = JSON.stringify(report, null, 2);
+  } catch (error) {
+    $("verificationResult").textContent = "Verification failed: " + error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function zeroWatchRequest(path, options = {}) {
+  const response = await fetch("http://localhost:8081/api/v1/zerowatch" + path, {
+    ...options,
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.message || data.error ||
+      "ZeroWatch HTTP " + response.status
+    );
+  }
+
+  return data;
+}
+
+async function refreshZeroWatchAlerts() {
+  const button = $("zeroWatchRefreshButton");
+  button.disabled = true;
+  $("zeroWatchMessage").textContent = "Loading alerts…";
+
+  try {
+    const alerts = await zeroWatchRequest("/alerts?limit=10");
+    const body = $("zeroWatchAlertRows");
+    body.replaceChildren();
+
+    if (!Array.isArray(alerts) || alerts.length === 0) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 4;
+      td.textContent = "No alerts yet. Generate a demo event burst.";
+      tr.appendChild(td);
+      body.appendChild(tr);
+    } else {
+      alerts.forEach(alert => {
+        const tr = document.createElement("tr");
+        [
+          alert.severity,
+          alert.ruleId,
+          alert.explanation,
+          Array.isArray(alert.eventIds)
+            ? alert.eventIds.length + " event(s): " +
+              alert.eventIds.join(", ")
+            : "—"
+        ].forEach(value => tr.appendChild(cell(value)));
+        body.appendChild(tr);
+      });
+    }
+
+    $("zeroWatchMessage").textContent =
+      "Loaded " + alerts.length + " alert(s) from ZeroWatch.";
+    $("zeroWatchMessage").className = "success";
+  } catch (error) {
+    $("zeroWatchMessage").textContent =
+      "Could not load alerts: " + error.message;
+    $("zeroWatchMessage").className = "error";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function runZeroWatchDemo() {
+  const button = $("zeroWatchDemoButton");
+  button.disabled = true;
+  $("zeroWatchMessage").textContent =
+    "Submitting three synthetic access-denied events…";
+  $("zeroWatchMessage").className = "muted";
+
+  const responses = [];
+  const start = Date.now();
+
+  try {
+    for (let i = 0; i < 3; i++) {
+      const event = {
+        schemaVersion: "1.0",
+        timestamp: new Date(start + i * 30000).toISOString(),
+        serviceName: "zerowatch-demo",
+        eventType: "ACCESS_DENIED",
+        requestId: "demo-request-" + start + "-" + i,
+        traceId: "demo-trace-" + start,
+        attributes: {
+          actorRef: "actor-a1b2c3d4",
+          resource: "admin-console"
+        }
+      };
+
+      const result = await zeroWatchRequest("/events", {
+        method: "POST",
+        body: JSON.stringify(event)
+      });
+
+      responses.push(result);
+      $("zeroWatchEventOutput").textContent =
+        JSON.stringify(responses, null, 2);
+    }
+
+    $("zeroWatchMessage").textContent =
+      "All three synthetic events were accepted. Loading alerts…";
+    $("zeroWatchMessage").className = "success";
+
+    await refreshZeroWatchAlerts();
+  } catch (error) {
+    $("zeroWatchMessage").textContent =
+      "Demo stopped: " + error.message +
+      ". Refresh alerts to inspect any events already accepted.";
+    $("zeroWatchMessage").className = "error";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+</script>
+</body>
+</html>

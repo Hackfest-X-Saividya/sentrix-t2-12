@@ -1,0 +1,5 @@
+[
+  {"schemaVersion":"1.0","timestamp":"2026-10-28T10:02:00Z","serviceName":"zerowatch-demo","eventType":"APP_STARTED","attributes":{}},
+  {"schemaVersion":"1.0","timestamp":"2026-10-28T10:02:10Z","serviceName":"zerowatch-demo","eventType":"ACCESS_GRANTED","attributes":{"actorRef":"actor-cafebabe1234","resource":"health-check"}},
+  {"schemaVersion":"1.0","timestamp":"2026-10-28T10:02:20Z","serviceName":"zerowatch-demo","eventType":"SENSITIVE_OPERATION","attributes":{"operation":"PARAMETERIZED_SQL_EXECUTION","outcome":"ALLOWED"}}
+]

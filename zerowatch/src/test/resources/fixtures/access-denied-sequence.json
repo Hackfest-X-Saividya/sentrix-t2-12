@@ -1,0 +1,5 @@
+[
+  {"schemaVersion":"1.0","timestamp":"2026-10-28T10:00:00Z","serviceName":"zerowatch-demo","eventType":"ACCESS_DENIED","requestId":"demo-1","attributes":{"actorRef":"actor-deadbeef1234","resource":"admin-console"}},
+  {"schemaVersion":"1.0","timestamp":"2026-10-28T10:00:30Z","serviceName":"zerowatch-demo","eventType":"ACCESS_DENIED","requestId":"demo-2","attributes":{"actorRef":"actor-deadbeef1234","resource":"admin-console"}},
+  {"schemaVersion":"1.0","timestamp":"2026-10-28T10:01:00Z","serviceName":"zerowatch-demo","eventType":"ACCESS_DENIED","requestId":"demo-3","attributes":{"actorRef":"actor-deadbeef1234","resource":"admin-console"}}
+]

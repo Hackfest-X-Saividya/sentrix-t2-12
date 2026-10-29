@@ -1,0 +1,3 @@
+class MalformedSource {
+  void broken( {
+}

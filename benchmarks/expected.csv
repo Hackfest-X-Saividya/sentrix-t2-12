@@ -1,0 +1,6 @@
+fixture,expected_rule,status,expected_findings
+DirectUnsafe.java,zerotrace.java.sql-injection,POTENTIALLY_VULNERABLE,1+
+IndirectSameMethod.java,zerotrace.java.sql-injection,POTENTIALLY_VULNERABLE,1+
+ParameterizedSafe.java,zerotrace.java.sql-injection,CLEAN,0
+CustomWrapperReview.java,zerotrace.java.sql-wrapper-review,NEEDS_REVIEW,1+
+HarmlessInput.java,all,CLEAN,0

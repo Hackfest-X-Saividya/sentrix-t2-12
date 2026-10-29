@@ -1,0 +1,14 @@
+{
+  "findingId": "manual-sqli-002",
+  "ruleId": "zerotrace.java.sql-injection",
+  "category": "sql-injection",
+  "severity": "HIGH",
+  "filePath": "fixtures/VulnerableQuery.java",
+  "lineStart": 10,
+  "lineEnd": 11,
+  "evidence": [
+    "Synthetic SQL injection fixture"
+  ],
+  "explanation": "Manual test of the fixture-only remediation workflow",
+  "codeContext": "String sql = \"SELECT * FROM users WHERE name = '\" + userInput + \"'\";\nstatement.executeQuery(sql);"
+}

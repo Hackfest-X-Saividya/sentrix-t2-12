@@ -1,0 +1,26 @@
+rules:
+  - id: zerotrace.java.sql-injection
+    mode: taint
+    languages: [java]
+    severity: ERROR
+    message: User-controlled data reaches a SQL execution method. Confirm the path and use parameter binding.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command"
+    pattern-sources:
+      - pattern: $REQUEST.getParameter(...)
+      - pattern: $REQUEST.getHeader(...)
+    pattern-sinks:
+      - pattern: $STMT.executeQuery($QUERY)
+      - pattern: $STMT.executeUpdate($QUERY)
+      - pattern: $STMT.execute($QUERY)
+  - id: zerotrace.java.sql-wrapper-review
+    languages: [java]
+    severity: WARNING
+    message: A custom method forwards a string parameter to SQL execution. Review callers and traceability; this is not a confirmed source-to-sink flow.
+    patterns:
+      - pattern-inside: |
+          ... $RET $METHOD(..., String $VALUE, ...) {
+            ...
+          }
+      - pattern: $STMT.executeQuery($VALUE)

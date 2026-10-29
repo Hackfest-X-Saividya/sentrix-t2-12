@@ -1,0 +1,25 @@
+target/
+.idea/
+*.iml
+*.log
+# Java / Maven
+**/target/
+*.class
+
+# Node / React
+**/node_modules/
+**/dist/
+zerotrace-react-ui-backup/
+
+# Local secrets and environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# IDE / operating system
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
